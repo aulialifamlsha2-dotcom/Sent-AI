@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SentAI - Analisis Sentimen Kampus</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Animation Classes */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Toast Notification */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+        .toast {
+            background: white;
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            border-left: 4px solid;
+            animation: slideIn 0.3s ease-out;
+            min-width: 300px;
+        }
+        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <!-- TOAST CONTAINER -->
+    <div id="toast-container"></div>
+
+    <!-- =======================
+         LOGIN / REGISTER PAGE
+    ======================== -->
+    <section id="auth-section" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-700 p-4 z-10 relative">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden fade-in relative">
+            <div class="p-8">
+                <div class="text-center mb-8">
+                    <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                    </div>
+                    <h1 class="text-2xl font-bold text-slate-900">SentAI</h1>
+                    <p class="text-sm text-slate-500 mt-1">Analisis Sentimen Universitas Komputer</p>
+                </div>
+
+                <!-- Tabs -->
+                <div class="flex border-b border-slate-200 mb-6">
+                    <button onclick="switchAuthTab('login')" id="tab-login" class="flex-1 pb-3 text-indigo-600 font-semibold border-b-2 border-indigo-600 transition cursor-pointer">Masuk</button>
+                    <button onclick="switchAuthTab('register')" id="tab-register" class="flex-1 pb-3 text-slate-500 font-medium hover:text-slate-700 transition cursor-pointer">Daftar</button>
+                </div>
+
+                <!-- Login Form -->
+                <form id="login-form" onsubmit="handleLogin(event)">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Username</label>
+                            <input type="text" id="login-username" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="Contoh: mahasiswa" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                            <div class="relative">
+                                <input type="password" id="login-password" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition pr-10" placeholder="••••••••" required>
+                                <button type="button" onclick="togglePassword('login-password')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-indigo-600">
+                                    <svg id="icon-login-password" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <!-- 🔥 TAMBAHAN KOLOM STATUS/ROLE DI LOGIN -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Status (Role)</label>
+                            <select id="login-role" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white cursor-pointer">
+                                <option value="mahasiswa">Mahasiswa</option>
+                                <option value="dosen">Dosen</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition transform active:scale-95 shadow-lg shadow-indigo-200">
+                            Masuk ke Dashboard
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Register Form (Hidden by default) -->
+                <form id="register-form" class="hidden" onsubmit="handleRegister(event)">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Username Baru</label>
+                            <input type="text" id="reg-username" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="Buat username" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                            <div class="relative">
+                                <input type="password" id="reg-password" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition pr-10" placeholder="Buat password" required>
+                                <button type="button" onclick="togglePassword('reg-password')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-indigo-600">
+                                    <svg id="icon-reg-password" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5,12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                            <select id="reg-role" onchange="toggleDosenFields()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white cursor-pointer">
+                                <option value="mahasiswa">Mahasiswa</option>
+                                <option value="dosen">Dosen</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+
+                        <div id="dosen-fields" class="hidden space-y-4 animate-in fade-in slide-in-from-top-2">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Nama Lengkap (Gelar)</label>
+                                <input type="text" id="reg-fullname" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="Contoh: Dr. Budi Santoso">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Mata Kuliah</label>
+                                <input type="text" id="reg-subject" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="Contoh: Kecerdasan Buatan">
+                            </div>
+                        </div>
+
+                        <button type="submit" id="btn-register" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 rounded-lg transition transform active:scale-95 shadow-lg shadow-purple-200 cursor-pointer">
+                            Buat Akun
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- =======================
+         MAIN DASHBOARD LAYOUT
+    ======================== -->
+    <section id="app-section" class="hidden min-h-screen flex">
+        
+        <!-- Sidebar -->
+        <aside class="w-64 bg-slate-900 text-white flex flex-col hidden md:flex transition-all duration-300" id="sidebar">
+            <div class="p-6 flex items-center gap-3 border-b border-slate-800">
+                <div class="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                </div>
+                <span class="font-bold text-xl tracking-tight">SentAI</span>
+            </div>
+
+            <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+                <div id="sidebar-menu"></div>
+            </nav>
+
+            <div class="p-4 border-t border-slate-800">
+                <button onclick="logout()" class="flex items-center gap-3 w-full px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition text-sm font-medium cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    Keluar
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col h-screen overflow-hidden bg-slate-50 relative">
+            <!-- Mobile Header -->
+            <header class="md:hidden bg-white border-b border-slate-200 p-4 flex justify-between items-center">
+                <span class="font-bold text-indigo-600">SentAI</span>
+                <button onclick="toggleSidebar()" class="text-slate-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+            </header>
+
+            <!-- Content Area -->
+            <div class="flex-1 overflow-auto p-6 md:p-10" id="main-content"></div>
+        </main>
+    </section>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // ================= STATE MANAGEMENT =================
+        const DB_KEYS = {
+            USERS: 'edusmart_users',
+            FEEDBACK: 'edusmart_feedback',
+            SESSION: 'edusmart_session'
+        };
+
+        function initDB() {
+            try {
+                let users = getUsers();
+                if (!users || users.length === 0) {
+                    const defaultUsers = [
+                        { username: 'admin', password: 'admin123', role: 'admin', joined: new Date().toISOString() },
+                        { username: 'pakbudi', password: '123', role: 'dosen', fullname: 'Dr. Budi Santoso, M.Kom', subject: 'Kecerdasan Buatan', joined: new Date().toISOString() },
+                        { username: 'mahasiswa', password: '123', role: 'mahasiswa', joined: new Date().toISOString() }
+                    ];
+                    localStorage.setItem(DB_KEYS.USERS, JSON.stringify(defaultUsers));
+                }
+                let feedbacks = getFeedbacks();
+                if (!feedbacks) {
+                    localStorage.setItem(DB_KEYS.FEEDBACK, JSON.stringify([]));
+                }
+            } catch (e) {
+                console.error("Init DB Error:", e);
+                localStorage.setItem(DB_KEYS.USERS, JSON.stringify([]));
+                localStorage.setItem(DB_KEYS.FEEDBACK, JSON.stringify([]));
+            }
+        }
+
+        function getUsers() { 
+            try {
+                const data = localStorage.getItem(DB_KEYS.USERS);
+                return data && data !== "undefined" ? JSON.parse(data) : [];
+            } catch (e) { return []; }
+        }
+        function getFeedbacks() { 
+            try {
+                const data = localStorage.getItem(DB_KEYS.FEEDBACK);
+                return data && data !== "undefined" ? JSON.parse(data) : [];
+            } catch (e) { return []; }
+        }
+        function getSession() { 
+            try {
+                const data = localStorage.getItem(DB_KEYS.SESSION);
+                return data && data !== "undefined" ? JSON.parse(data) : null;
+            } catch (e) { return null; }
+        }
+        function setSession(user) { localStorage.setItem(DB_KEYS.SESSION, JSON.stringify(user)); }
+        function clearSession() { localStorage.removeItem(DB_KEYS.SESSION); }
+
+        // ================= AUTH LOGIC =================
+        function handleLogin(e) {
+            e.preventDefault();
+            const u = document.getElementById('login-username').value;
+            const p = document.getElementById('login-password').value;
+            // 🔥 AMBIL ROLE DARI DROPDOWN
+            const r = document.getElementById('login-role').value;
+
+            const users = getUsers();
+            const user = users.find(user => user.username === u && user.password === p);
+
+            // 🔥 CEK ROLE SAMA
+            if (user && user.role === r) {
+                setSession(user);
+                showToast(`Selamat datang, ${user.fullname || user.username}!`, 'success');
+                renderApp();
+            } else {
+                showToast('Username, Password, atau Status salah.', 'error');
+            }
+        }
+
+        function handleRegister(e) {
+            e.preventDefault(); 
+            const btn = document.getElementById('btn-register');
+            const originalText = btn.innerText;
+            btn.innerText = "Memproses...";
+            btn.disabled = true;
+            btn.classList.add('opacity-75');
+
+            try {
+                const uInput = document.getElementById('reg-username');
+                const pInput = document.getElementById('reg-password');
+                const rInput = document.getElementById('reg-role');
+                const fInput = document.getElementById('reg-fullname');
+                const sInput = document.getElementById('reg-subject');
+
+                const u = uInput.value.trim();
+                const p = pInput.value.trim();
+                const r = rInput.value;
+
+                if (!u || !p) throw new Error('Username dan password wajib diisi!');
+                
+                const users = getUsers();
+                if (users.find(user => user.username === u)) throw new Error('Username sudah digunakan!');
+
+                const newUser = { username: u, password: p, role: r, joined: new Date().toISOString() };
+
+                if (r === 'dosen') {
+                    if (!fInput.value.trim()) throw new Error('Nama Lengkap wajib diisi untuk Dosen!');
+                    if (!sInput.value.trim()) throw new Error('Mata Kuliah wajib diisi untuk Dosen!');
+                    newUser.fullname = fInput.value.trim();
+                    newUser.subject = sInput.value.trim();
+                }
+
+                users.push(newUser);
+                localStorage.setItem(DB_KEYS.USERS, JSON.stringify(users));
+
+                showToast('Registrasi berhasil! Silakan login.', 'success');
+                document.getElementById('register-form').reset();
+                switchAuthTab('login');
+            } catch (err) {
+                console.error(err);
+                showToast(err.message || 'Terjadi kesalahan.', 'error');
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+                btn.classList.remove('opacity-75');
+            }
+        }
+
+        function logout() {
+            clearSession();
+            showToast('Anda telah keluar.', 'info');
+            document.getElementById('app-section').classList.add('hidden');
+            document.getElementById('auth-section').classList.remove('hidden');
+        }
+
+        function checkAuth() {
+            const session = getSession();
+            if (session) renderApp();
+            else document.getElementById('auth-section').classList.remove('hidden');
+        }
+
+        // ================= ROUTING & SIDEBAR =================
+        function renderApp() {
+            const session = getSession();
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('app-section').classList.remove('hidden');
+            renderSidebar(session.role);
+            
+            if(session.role === 'admin') loadAdminDashboard();
+            else if(session.role === 'dosen') loadDosenDashboard();
+            else loadStudentInput();
+        }
+
+        function renderSidebar(role) {
+            const menuContainer = document.getElementById('sidebar-menu');
+            let items = [];
+
+            if (role === 'admin') {
+                items = [
+                    { label: 'Dashboard Univ', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4', action: 'loadAdminDashboard()' },
+                    { label: 'Data Pengguna', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z', action: 'loadAdminUsers()' }
+                ];
+            } else if (role === 'dosen') {
+                items = [
+                    { label: 'Dashboard Saya', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', action: 'loadDosenDashboard()' },
+                    { label: 'Riwayat Feedback', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', action: 'loadDosenHistory()' },
+                    { label: 'Profil Saya', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z', action: 'loadDosenProfile()' },
+                    { label: 'Aspirasi Univ', icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z', action: 'loadDosenUnivInput()' }
+                ];
+            } else if (role === 'mahasiswa') {
+                items = [
+                    { label: 'Input Feedback', icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z', action: 'loadStudentInput()' },
+                    { label: 'Riwayat Saya', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', action: 'loadStudentHistory()' }
+                ];
+            }
+
+            menuContainer.innerHTML = items.map(item => `
+                <button onclick="${item.action}" class="flex items-center gap-3 w-full px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition text-sm font-medium">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${item.icon}" />
+                    </svg>
+                    ${item.label}
+                </button>
+            `).join('');
+        }
+
+        // ================= MAHASISWA VIEWS =================
+        let currentStudentFilter = 'dosen';
+
+        function loadStudentInput() {
+            const user = getSession();
+            const users = getUsers() || [];
+            const dosenList = users.filter(u => u.role === 'dosen');
+            
+            const html = `
+                <div class="fade-in max-w-4xl mx-auto">
+                    <h2 class="text-2xl font-bold text-slate-900 mb-6">Buat Feedback Baru</h2>
+                    
+                    <div class="bg-white p-1 rounded-lg inline-flex mb-6 border border-slate-200">
+                        <button onclick="switchStudentTarget('dosen')" id="btn-target-dosen" class="px-6 py-2 rounded-md text-sm font-medium transition ${currentStudentFilter === 'dosen' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}">
+                            Ke Dosen
+                        </button>
+                        <button onclick="switchStudentTarget('univ')" id="btn-target-univ" class="px-6 py-2 rounded-md text-sm font-medium transition ${currentStudentFilter === 'univ' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}">
+                            Ke Universitas Komputer
+                        </button>
+                    </div>
+
+                    <div class="bg-white p-8 rounded-xl shadow-sm border border-slate-100">
+                        <div id="input-content-area"></div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('main-content').innerHTML = html;
+            renderStudentInputContent(dosenList);
+        }
+
+        function switchStudentTarget(target) {
+            currentStudentFilter = target;
+            loadStudentInput();
+        }
+
+        function renderStudentInputContent(dosenList) {
+            const area = document.getElementById('input-content-area');
+            if(!area) return;
+
+            if (currentStudentFilter === 'dosen') {
+                area.innerHTML = `
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Pilih Dosen</label>
+                        <select id="target-dosen" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white cursor-pointer">
+                            <option value="" disabled selected>-- Pilih Dosen --</option>
+                            ${dosenList.map(d => `<option value="${d.username}">${d.fullname} (${d.subject})</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Pesan Feedback</label>
+                        <textarea id="fb-input" rows="4" oninput="analyzeRealTime()" class="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition resize-none" placeholder="Tulis tanggapan Anda tentang dosen..."></textarea>
+                    </div>
+                    <div class="flex justify-between items-center mb-6">
+                        <div class="text-sm">Prediksi: <span id="live-sentiment" class="font-bold text-slate-400">Menunggu input...</span></div>
+                    </div>
+                    <button onclick="submitFeedback()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg transition shadow-md">Kirim Feedback ke Dosen</button>
+                `;
+            } else {
+                area.innerHTML = `
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Kategori</label>
+                        <select id="univ-category" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white cursor-pointer">
+                            <option value="Fasilitas">Fasilitas Kampus</option>
+                            <option value="Administrasi">Administrasi</option>
+                            <option value="Kurikulum">Kurikulum / Akademik</option>
+                            <option value="Lainnya">Lainnya</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Pesan Aspirasi</label>
+                        <textarea id="fb-input" rows="4" oninput="analyzeRealTime()" class="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition resize-none" placeholder="Tulis aspirasi Anda untuk kemajuan Universitas Komputer..."></textarea>
+                    </div>
+                     <div class="flex justify-between items-center mb-6">
+                        <div class="text-sm">Prediksi: <span id="live-sentiment" class="font-bold text-slate-400">Menunggu input...</span></div>
+                    </div>
+                    <button onclick="submitFeedback()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 rounded-lg transition shadow-md">Kirim Aspirasi Kampus</button>
+                `;
+            }
+        }
+
+        function loadStudentHistory() {
+            const user = getSession();
+            const users = getUsers() || [];
+            const feedbacks = getFeedbacks() || [];
+            const myFeedback = feedbacks.filter(f => f.from_student === user.username);
+
+            const html = `
+                <div class="fade-in max-w-5xl mx-auto">
+                    <h2 class="text-2xl font-bold text-slate-900 mb-6">Riwayat Feedback Saya</h2>
+                    
+                    <div class="flex space-x-4 border-b border-slate-200 mb-6">
+                        <button onclick="switchHistoryFilter('dosen')" id="hist-dosen" class="pb-3 px-1 border-b-2 font-medium text-sm transition ${currentStudentFilter === 'dosen' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}">Feedback ke Dosen</button>
+                        <button onclick="switchHistoryFilter('univ')" id="hist-univ" class="pb-3 px-1 border-b-2 font-medium text-sm transition ${currentStudentFilter === 'univ' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}">Feedback ke Universitas Komputer</button>
+                    </div>
+
+                    <div class="space-y-4">
+                        ${myFeedback.filter(f => (f.target_type || 'dosen') === currentStudentFilter).length === 0 
+                            ? `<div class="bg-white p-12 rounded-xl text-center text-slate-400 shadow-sm border border-slate-100">Belum ada feedback ${currentStudentFilter === 'dosen' ? 'ke dosen' : 'ke kampus'}.</div>` 
+                            : myFeedback
+                                .filter(f => (f.target_type || 'dosen') === currentStudentFilter)
+                                .slice().reverse()
+                                .map(f => {
+                                    const target = f.target_type === 'dosen' 
+                                        ? (users.find(u => u.username === f.to_dosen)?.fullname || f.to_dosen)
+                                        : 'Universitas Komputer';
+                                    return `
+                                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                                        <div class="flex justify-between items-start mb-4">
+                                            <div class="flex items-center gap-4">
+                                                <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-lg">
+                                                    ${target.charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <div class="font-bold text-slate-800 text-lg">Kepada: ${target}</div>
+                                                    <div class="text-xs text-slate-500 uppercase tracking-wide">${f.target_type === 'dosen' ? 'Dosen' : 'Universitas Komputer'}</div>
+                                                </div>
+                                            </div>
+                                            <!-- 🔥 BADGE SENTIMEN -->
+                                            <span class="px-3 py-1 rounded-full text-sm font-bold ${getSentimentColor(f.sentiment)}">${f.sentiment}</span>
+                                        </div>
+                                        <p class="text-slate-700 bg-slate-50 p-4 rounded-lg text-base italic">"${f.text}"</p>
+                                        <div class="text-xs text-slate-400 mt-3 text-right">Dikirim: ${new Date(f.date).toLocaleString()}</div>
+                                    </div>
+                                `}).join('')}
+                    </div>
+                </div>
+            `;
+            document.getElementById('main-content').innerHTML = html;
+        }
+
+        function switchHistoryFilter(filter) {
+            currentStudentFilter = filter;
+            loadStudentHistory();
+        }
+
+        // ================= DOSEN VIEWS =================
+
+        function loadDosenDashboard() {
+            const user = getSession();
+            const feedbacks = getFeedbacks().filter(f => f.to_dosen === user.username);
+            
+            const pos = feedbacks.filter(f => f.sentiment === 'Positif').length;
+            const neg = feedbacks.filter(f => f.sentiment === 'Negatif').length;
+            const neu = feedbacks.filter(f => f.sentiment === 'Netral').length;
+
+            const html = `
+                <div class="fade-in">
+                    <h2 class="text-2xl font-bold text-slate-900 mb-6">Dashboard Performa Mengajar</h2>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                            <h3 class="text-sm font-medium text-slate-500 mb-2">Total Feedback</h3>
+                            <div class="text-3xl font-bold text-indigo-600">${feedbacks.length}</div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                            <h3 class="text-sm font-medium text-slate-500 mb-2">Skor Kepuasan</h3>
+                            <div class="text-3xl font-bold text-green-600">
+                                ${feedbacks.length > 0 ? Math.round((pos / feedbacks.length) * 100) : 0}%
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                            <h3 class="text-sm font-medium text-slate-500 mb-2">Mata Kuliah</h3>
+                            <div class="text-lg font-bold text-slate-800 truncate" title="${user.subject}">${user.subject}</div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                            <h3 class="font-bold text-lg mb-4 text-slate-800">Analisis Sentimen</h3>
+                            <div class="h-64">
+                                <canvas id="chartDosen"></canvas>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                             <h3 class="font-bold text-lg mb-4 text-slate-800">Feedback Terbaru</h3>
+                             <div class="space-y-3 max-h-[250px] overflow-y-auto pr-2">
+                                ${feedbacks.slice().reverse().slice(0, 3).map(f => `
+                                    <div class="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                        <div class="flex justify-between mb-1">
+                                            <span class="text-xs font-bold text-slate-500">Dari: ${f.from_student}</span>
+                                            <span class="text-[10px] ${getSentimentColor(f.sentiment).replace('text-', 'bg-')} px-2 py-0.5 rounded">${f.sentiment}</span>
+                                        </div>
+                                        <p class="text-sm text-slate-700 line-clamp-2">"${f.text}"</p>
+                                    </div>
+                                `).join('') || '<div class="text-sm text-slate-400 text-center">Belum ada data.</div>'}
+                             </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('main-content').innerHTML = html;
+            setTimeout(() => renderChart('chartDosen', pos, neg, neu), 100);
+        }
+
+        function loadDosenHistory() {
+            const user = getSession();
+            const feedbacks = getFeedbacks().filter(f => f.to_dosen === user.username);
+
+            const html = `
+                <div class="fade-in max-w-5xl mx-auto">
+                    <h2 class="text-2xl font-bold text-slate-900 mb-6">Riwayat Feedback Masuk</h2>
+                    
+                    <div class="space-y-4">
+                        ${feedbacks.length === 0 
+                            ? `<div class="bg-white p-12 rounded-xl text-center text-slate-400 shadow-sm border border-slate-100">Belum ada feedback yang masuk.</div>` 
+                            : feedbacks.slice().reverse().map(f => `
+                                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                                    <div class="flex justify-between items-start mb-4">
+                                        <div class="flex items-center gap-4">
+                                            <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-lg">
+                                                ${f.from_student.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <div class="font-bold text-slate-800 text-lg">Dari: ${f.from_student}</div>
+                                                <div class="text-xs text-slate-500 uppercase tracking-wide">Mahasiswa</div>
+                                            </div>
+                                        </div>
+                                        <!-- 🔥 BADGE SENTIMEN -->
+                                        <span class="px-3 py-1 rounded-full text-sm font-bold ${getSentimentColor(f.sentiment)}">${f.sentiment}</span>
+                                    </div>
+                                    <p class="text-slate-700 bg-slate-50 p-4 rounded-lg text-base italic">"${f.text}"</p>
+                                    <div class="text-xs text-slate-400 mt-3 text-right">Diterima: ${new Date(f.date).toLocaleString()}</div>
+                                </div>
+                            `).join('')}
+                    </div>
+                </div>
+            `;
+            document.getElementById('main-content').innerHTML = html;
+        }
+
+        function loadDosenProfile() {
+            const user = getSession();
+            const html = `
+                <div class="fade-in max-w-2xl mx-auto">
+                    <h2 class="text-2xl font-bold text-slate-900 mb-6">Profil Dosen</h2>
+                    
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                        <div class="bg-indigo-600 h-32"></div>
+                        <div class="px-8 pb-8 relative">
+                            <div class="w-24 h-24 rounded-full bg-white border-4 border-white shadow-lg absolute -top-12 flex items-center justify-center text-3xl font-bold text-indigo-600 bg-indigo-50">
+                                ${(user.fullname || user.username).charAt(0)}
+                            </div>
+                            <div class="pt-14">
+                                <h3 class="text-2xl font-bold text-slate-900">${user.fullname}</h3>
+                                <p class="text-indigo-600 font-medium">${user.role.toUpperCase()}</p>
+                                <p class="text-slate-500 mt-1">Mengajar: <span class="text-slate-800 font-medium">${user.subject}</span></p>
+                            </div>
+                            <div class="grid grid-cols-2 gap-6 mt-8 border-t border-slate-100 pt-6">
+                                <div><div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Username</div><div class="text-slate-800 font-medium">${user.username}</div></div>
+                                <div><div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Terdaftar Sejak</div><div class="text-slate-800 font-medium">${new Date(user.joined).toLocaleDateString('id-ID')}</div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('main-content').innerHTML = html;
+        }
+
+        function loadDosenUnivInput() {
+            const html = `
+                <div class="fade-in max-w-3xl mx-auto">
+                    <h2 class="text-2xl font-bold text-slate-900 mb-2">Aspirasi ke Universitas Komputer</h2>
+                    <p class="text-slate-500 mb-6">Berikan masukan Anda untuk pengembangan fakultas dan universitas.</p>
+                    
+                    <div class="bg-white p-8 rounded-xl shadow-sm border border-slate-100">
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Kategori Aspirasi</label>
+                            <select id="univ-category" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white cursor-pointer">
+                                <option value="Fasilitas">Fasilitas (Lab, Kelas, AC)</option>
+                                <option value="Administrasi">Layanan Administrasi</option>
+                                <option value="Kurikulum">Kurikulum & Mata Kuliah</option>
+                                <option value="Event">Event & Organisasi</option>
+                                <option value="Lainnya">Lainnya</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Isi Aspirasi</label>
+                            <textarea id="fb-input" rows="5" oninput="analyzeRealTime()" class="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition resize-none" placeholder="Contoh: Sebaiknya lab komputer diperbarui perangkatnya..."></textarea>
+                        </div>
+                         <div class="flex justify-between items-center mb-6">
+                            <div class="text-sm">Prediksi Sentimen: <span id="live-sentiment" class="font-bold text-slate-400">Menunggu input...</span></div>
+                        </div>
+                        <button onclick="submitFeedback()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 rounded-lg transition shadow-md">Kirim Aspirasi</button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('main-content').innerHTML = html;
+        }
+
+        // ================= SHARED LOGIC =================
+        
+        function submitFeedback() {
+            const text = document.getElementById('fb-input').value;
+            const user = getSession();
+            
+            let targetData = {};
+            let successMsg = "";
+
+            if (user.role === 'mahasiswa') {
+                if (currentStudentFilter === 'dosen') {
+                    const target = document.getElementById('target-dosen').value;
+                    if (!target) return showToast('Pilih Dosen!', 'error');
+                    targetData = { target_type: 'dosen', to_dosen: target };
+                    successMsg = "Feedback ke dosen terkirim!";
+                } else {
+                    const cat = document.getElementById('univ-category').value;
+                    targetData = { target_type: 'univ', category: cat };
+                    successMsg = "Aspirasi kampus terkirim!";
+                }
+            } else if (user.role === 'dosen') {
+                 const cat = document.getElementById('univ-category').value;
+                 targetData = { target_type: 'univ', category: cat };
+                 successMsg = "Masukan dosen terkirim!";
+            }
+
+            if (!text.trim()) return showToast('Tulis pesan Anda terlebih dahulu.', 'error');
+
+            const sentiment = analyzeSentiment(text);
+
+            const newFb = {
+                id: Date.now(),
+                from_student: user.username,
+                from_role: user.role,
+                ...targetData,
+                text: text,
+                sentiment: sentiment,
+                date: new Date().toISOString()
+            };
+
+            const list = getFeedbacks();
+            list.push(newFb);
+            localStorage.setItem(DB_KEYS.FEEDBACK, JSON.stringify(list));
+
+            showToast(successMsg, 'success');
+            document.getElementById('fb-input').value = '';
+            document.getElementById('live-sentiment').innerText = "Menunggu input...";
+            document.getElementById('live-sentiment').className = "font-bold text-slate-400";
+            
+            if(user.role === 'mahasiswa') loadStudentInput();
+            else loadDosenUnivInput();
+        }
+
+        function analyzeSentiment(text) {
+            if (!text) return 'Netral';
+            const lower = text.toLowerCase();
+            const posWords = ['bagus', 'baik', 'membantu', 'cepat', 'jelas', 'akurat', 'keren', 'canggih', 'efisien', 'mudah', 'senang', 'suka', 'hebat', 'mantap', 'paham', 'asik', 'nyaman'];
+            const negWords = ['buruk', 'jelek', 'sulit', 'ribet', 'lama', 'salah', 'bingung', 'kecewa', 'gagal', 'error', 'tidak bekerja', 'parah', 'bodoh', 'ngantuk', 'susah', 'sempit', 'panas', 'bau'];
+            
+            let score = 0;
+            posWords.forEach(w => { if (lower.includes(w)) score++; });
+            negWords.forEach(w => { if (lower.includes(w)) score--; });
+
+            if (score > 0) return 'Positif';
+            if (score < 0) return 'Negatif';
+            return 'Netral';
+        }
+
+        function analyzeRealTime() {
+            const text = document.getElementById('fb-input').value;
+            const label = document.getElementById('live-sentiment');
+            if (!label) return;
+            
+            if (!text.trim()) {
+                label.innerText = "Menunggu input...";
+                label.className = "font-bold text-slate-400";
+                return;
+            }
+            const res = analyzeSentiment(text);
+            label.innerText = res;
+            
+            if(res === 'Positif') label.className = "font-bold text-green-600";
+            else if(res === 'Negatif') label.className = "font-bold text-red-600";
+            else label.className = "font-bold text-gray-600";
+        }
+
+        function renderChart(canvasId, pos, neg, neu) {
+            const ctx = document.getElementById(canvasId);
+            if (!ctx) return;
+            
+            const existingChart = Chart.getChart(canvasId);
+            if (existingChart) existingChart.destroy();
+
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Positif', 'Negatif', 'Netral'],
+                    datasets: [{
+                        data: [pos, neg, neu],
+                        backgroundColor: ['#22c55e', '#ef4444', '#94a3b8'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        }
+
+        // ================= UTILS & ADMIN =================
+        function loadAdminDashboard() {
+            const feedbacks = getFeedbacks();
+            const users = getUsers();
+            const pos = feedbacks.filter(f => f.sentiment === 'Positif').length;
+            const neg = feedbacks.filter(f => f.sentiment === 'Negatif').length;
+            const neu = feedbacks.filter(f => f.sentiment === 'Netral').length;
+
+            const html = `
+                <div class="fade-in">
+                    <h2 class="text-2xl font-bold text-slate-900 mb-6">Dashboard Universitas Komputer</h2>
+                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                            <div class="text-slate-500 text-sm font-medium">Total Pengguna</div>
+                            <div class="text-3xl font-bold text-slate-800 mt-2">${users.length}</div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                            <div class="text-slate-500 text-sm font-medium">Total Feedback</div>
+                            <div class="text-3xl font-bold text-indigo-600 mt-2">${feedbacks.length}</div>
+                        </div>
+                         <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                            <div class="text-slate-500 text-sm font-medium">Total Dosen</div>
+                            <div class="text-3xl font-bold text-purple-600 mt-2">${users.filter(u => u.role === 'dosen').length}</div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 mb-8">
+                         <h3 class="font-bold text-lg mb-4 text-slate-800">Sentimen Seluruh Universitas</h3>
+                         <div class="h-64">
+                            <canvas id="chartAdmin"></canvas>
+                         </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('main-content').innerHTML = html;
+            setTimeout(() => renderChart('chartAdmin', pos, neg, neu), 100);
+        }
+
+        function loadAdminUsers() {
+            const users = getUsers();
+            const html = `
+                <div class="fade-in">
+                    <h2 class="text-2xl font-bold text-slate-900 mb-6">Data Pengguna</h2>
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                         <table class="w-full text-left text-sm text-slate-600">
+                                <thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500">
+                                    <tr>
+                                        <th class="px-6 py-3">Username</th>
+                                        <th class="px-6 py-3">Role</th>
+                                        <th class="px-6 py-3">Detail</th>
+                                        <th class="px-6 py-3">Tanggal Gabung</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    ${users.map(u => `
+                                        <tr>
+                                            <td class="px-6 py-4 font-medium">${u.username}</td>
+                                            <td class="px-6 py-4 capitalize"><span class="bg-slate-100 px-2 py-1 rounded text-xs">${u.role}</span></td>
+                                            <td class="px-6 py-4 text-slate-500">${u.fullname || u.subject || '-'}</td>
+                                            <td class="px-6 py-4">${new Date(u.joined).toLocaleDateString()}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                    </div>
+                </div>
+            `;
+            document.getElementById('main-content').innerHTML = html;
+        }
+
+        function getSentimentColor(s) {
+            if (s === 'Positif') return 'bg-green-100 text-green-700';
+            if (s === 'Negatif') return 'bg-red-100 text-red-700';
+            return 'bg-gray-100 text-gray-700';
+        }
+
+        function showToast(msg, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type === 'error' ? 'border-red-500' : type === 'success' ? 'border-green-500' : 'border-indigo-500'}`;
+            
+            let icon = '';
+            if (type === 'success') icon = '<svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
+            else if (type === 'error') icon = '<svg class="w-5 h-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+            else icon = '<svg class="w-5 h-5 text-indigo-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+
+            toast.innerHTML = `${icon}<span class="text-slate-700 text-sm font-medium">${msg}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function switchAuthTab(tab) {
+            const loginForm = document.getElementById('login-form');
+            const regForm = document.getElementById('register-form');
+            const tabLogin = document.getElementById('tab-login');
+            const tabReg = document.getElementById('tab-register');
+
+            if (tab === 'login') {
+                loginForm.classList.remove('hidden');
+                regForm.classList.add('hidden');
+                tabLogin.className = "flex-1 pb-3 text-indigo-600 font-semibold border-b-2 border-indigo-600 transition cursor-pointer";
+                tabReg.className = "flex-1 pb-3 text-slate-500 font-medium hover:text-slate-700 transition cursor-pointer";
+            } else {
+                loginForm.classList.add('hidden');
+                regForm.classList.remove('hidden');
+                tabLogin.className = "flex-1 pb-3 text-slate-500 font-medium hover:text-slate-700 transition cursor-pointer";
+                tabReg.className = "flex-1 pb-3 text-indigo-600 font-semibold border-b-2 border-indigo-600 transition cursor-pointer";
+            }
+        }
+
+        function toggleDosenFields() {
+            const role = document.getElementById('reg-role').value;
+            const fields = document.getElementById('dosen-fields');
+            if (role === 'dosen') {
+                fields.classList.remove('hidden');
+            } else {
+                fields.classList.add('hidden');
+            }
+        }
+
+        function togglePassword(inputId) {
+            const input = document.getElementById(inputId);
+            const icon = document.getElementById(`icon-${inputId}`);
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532L3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />';
+            } else {
+                input.type = 'password';
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />';
+            }
+        }
+
+        function toggleSidebar() {
+            const sb = document.getElementById('sidebar');
+            sb.classList.toggle('hidden');
+            sb.classList.toggle('absolute');
+            sb.classList.toggle('z-40');
+            sb.classList.toggle('h-full');
+        }
+
+        window.onload = function() {
+            initDB();
+            checkAuth();
+        };
+    </script>
+</body>
+</html>
